@@ -1,0 +1,14 @@
+int a;
+int b;
+suma(){
+    printf(a+b);    
+}
+resta(int a, int b){
+    printf(a-b);
+}
+main (){
+    printf(a+b);
+    puts("Hola");
+    suma();
+    resta(a, b);
+}
