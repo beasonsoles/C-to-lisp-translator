@@ -1,0 +1,13 @@
+int a, b;
+int i;
+suma ( int a, int b ) {
+	for ( i = 0 ; i < a ; i = i + 1 ) {
+		a=b+2;
+	}
+	return a;
+}
+main () {
+	suma(a,b);
+	puts("La suma es:");
+	printf("%d",a);
+}

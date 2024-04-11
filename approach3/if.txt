@@ -1,0 +1,17 @@
+int ep ;
+int res ;
+es_par (int v) {
+	printf ("%d", v) ;
+	if (v % 2 == 0) {
+		puts (" es par") ;
+		ep = 1 ;
+	} else {
+		puts (" es impar") ;
+		ep = 0 ;
+	}	
+	return ep ;
+}
+main () {
+	es_par();
+	printf("%d", res);
+}
