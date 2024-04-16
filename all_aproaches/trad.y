@@ -15,9 +15,11 @@ char *mi_malloc (int) ;
 char *gen_code (char *) ;
 char *int_to_string (int) ;
 char *char_to_string (char) ;
+void formatoLisp (char *) ;
 
 char temp [2048] ;
 char func_name [256] ; // para identificar variables locales por el nombre de la funcion
+char format [2048] ; // para guardar la traducción en Lisp formateada
 
 // Definitions for explicit attributes
 
@@ -58,47 +60,61 @@ typedef struct s_attr {
 
 %%                            // Seccion 3 Gramatica - Semantico
 
-axioma:         decl_var_def_func           { ; }
+axioma:     decl_var_def_func                   { ; }
             ;
 
-decl_var_def_func:      decl_var                { printf ("%s\n", $1.code) ; }
-                        funciones               { ; }
-                    |   funciones               { ; }
+decl_var_def_func:      decl_var               { formatoLisp ($1.code) ; }
+                        def_func               { ; }
+                    |   def_func               { ; }
                     ;
 
-decl_var:           INTEGER definicion ';'          { sprintf (temp, "%s", $2.code) ;  
+decl_var:       INTEGER definicion ';'              { sprintf (temp, "%s", $2.code) ;  
                                                       $$.code = gen_code (temp) ; }
             |   INTEGER definicion ';' decl_var     { sprintf (temp, "%s\n%s", $2.code, $4.code) ;  
-                                                        $$.code = gen_code (temp) ; }
+                                                      $$.code = gen_code (temp) ; }
             ;
 
-funciones:      r_func                              { printf ("%s\n", $1.code) ; }
-                funciones                           { ; }
-            |   main_func '(' ')' '{' codigo '}'    { printf ("(defun main ()\n\t%s\n)\n", $5.code) ; }                                             
+def_func:       funciones                           { ; }
+                main_func                           { ; }
             ;
 
-main_func:      MAIN                                            { strcpy(func_name, $1.code) ; }  
+main_func:      main '(' params ')' '{' codigo '}'  { printf ("(defun %s (%s)\n%s\n)\n", $1.code, $3.code, $6.code) ; }
             ;
 
-r_func:         nombre_func '(' ')' '{' codigo '}'              { sprintf (temp, "(defun %s ()\n%s\n)", $1.code, $5.code) ;
-                                                                  $$.code = gen_code (temp) ; }
-            |   nombre_func '(' params ')' '{' codigo '}'       { sprintf (temp, "(defun %s (%s)\n%s\n)", $1.code, $3.code, $6.code) ;
-                                                                  $$.code = gen_code (temp); }   
+main:           MAIN                                { strcpy (func_name, $1.code) ; 
+                                                      sprintf (temp, "%s", $1.code) ; 
+                                                      $$.code = gen_code (temp) ; }
             ;
 
-nombre_func:    IDENTIF                                         { strcpy(func_name, $1.code) ; }
+funciones:      funcion                             { printf ("%s\n", $1.code) ; }
+                r_func                              { ; }
+            ;
+
+r_func:                                             { ; }
+            |   funciones                           { ; }
+            ;
+
+funcion:        nombre_func '(' params ')' '{' codigo '}'    { sprintf (temp, "(defun %s (%s)\n%s\n)", $1.code, $3.code, $6.code) ;
+                                                               $$.code = gen_code (temp); }                                           
+            ;
+
+
+nombre_func:    IDENTIF                             { strcpy (func_name, $1.code) ; 
+                                                      sprintf (temp, "%s", $1.code) ; 
+                                                      $$.code = gen_code (temp) ; }                        
             ;                                   
 
-params:         INTEGER IDENTIF                                 { sprintf (temp, "%s", $2.code) ;
-                                                                  $$.code = gen_code (temp) ; }
-            |   INTEGER IDENTIF ',' params                      { sprintf (temp, "%s %s", $2.code, $4.code) ;
-                                                                  $$.code = gen_code (temp) ; }                                                   
+params:                                             { $$.code = gen_code("") ; }
+            |   INTEGER IDENTIF                     { sprintf (temp, "%s", $2.code) ;
+                                                      $$.code = gen_code (temp) ; }
+            |   INTEGER IDENTIF ',' params          { sprintf (temp, "%s %s", $2.code, $4.code) ;
+                                                      $$.code = gen_code (temp) ; }                                                   
             ;
 
-codigo:         lineas                                          { sprintf (temp, "%s", $1.code) ;
-                                                                  $$.code = gen_code (temp) ; }
-            |   codigo lineas                                   { sprintf (temp, "%s\n%s", $1.code, $2.code) ;
-                                                                  $$.code = gen_code (temp) ; }
+codigo:         lineas                              { sprintf (temp, "%s", $1.code) ;
+                                                      $$.code = gen_code (temp) ; }
+            |   codigo lineas                       { sprintf (temp, "%s\n%s", $1.code, $2.code) ;
+                                                      $$.code = gen_code (temp) ; }
             ;
 
 lineas:         sentencia ';'                                                           { sprintf (temp, "\t%s", $1.code) ; 
@@ -117,7 +133,7 @@ lineas:         sentencia ';'                                                   
                                                                                           $$.code = gen_code (temp) ; }
             ;
 
-codigo_loop:   sentencia ';' codigo_loop                            { sprintf (temp, "\t\t%s\n%s", $1.code, $3.code) ; 
+codigo_loop:    sentencia ';' codigo_loop                           { sprintf (temp, "\t\t%s\n%s", $1.code, $3.code) ; 
                                                                       $$.code = gen_code (temp) ; }
             |   sentencia ';'                                       { sprintf (temp, "\t\t%s", $1.code) ; 
                                                                       $$.code = gen_code (temp) ; }
@@ -281,6 +297,29 @@ char *my_malloc (int nbytes)       // reserva n bytes de memoria dinamica
     nv++ ;
 
     return p ;
+}
+
+void formatoLisp(char *cadena) {
+    int indent = 0;
+    char *ptr = cadena;
+
+    while (*ptr != '\0') {
+        if (*ptr == '(') {
+            printf("\n");
+            for (int i = 0; i < indent; i++) {
+                printf("\t");
+            }
+            printf("(");
+            indent++;
+        } else if (*ptr == ')') {
+            printf(")");
+            indent--;
+        } else {
+            printf("%c", *ptr);
+        }
+        ptr++;
+    }
+    printf("\n");
 }
 
 
