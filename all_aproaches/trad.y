@@ -176,6 +176,12 @@ sentencia:      IDENTIF '=' expresion ';'                                       
                                                                                           sprintf (temp, "(setf (aref %s %s) %s)", $1.code, $3.code, $6.code) ;
                                                                                       }
                                                                                       $$.code = gen_code (temp) ; }
+            |   IDENTIF '=' llamada ';'                                             { if (isLocalVar ($1.code)) {
+                                                                                          sprintf (temp, "(setf %s_%s %s)", func_name, $1.code, $3.code) ; 
+                                                                                      } else {
+                                                                                          sprintf (temp, "(setf %s %s)", $1.code, $3.code) ;
+                                                                                      }
+                                                                                      $$.code = gen_code (temp) ; } 
             |   PRINTF '(' STRING ',' print ')' ';'                                 { sprintf (temp, "%s", $5.code) ;  
                                                                                       $$.code = gen_code (temp) ; }
             |   PUTS '(' STRING ')' ';'                                             { sprintf (temp, "(print \"%s\")", $3.code) ; 
@@ -232,6 +238,8 @@ inc_dec:        IDENTIF '=' IDENTIF '+' expresion               { if (isLocalVar
 retorno:                                      
                 expresion                       { sprintf (temp, "%s", $1.code) ;
                                                   $$.code = gen_code (temp) ; }
+            |   llamada                         { sprintf (temp, "%s", $1.code) ; 
+                                                  $$.code = gen_code (temp) ; } 
             |   expresion ',' retorno           { sprintf (temp, "(values %s %s)", $1.code, $3.code) ;
                                                   $$.code = gen_code (temp) ; }
             ;
@@ -272,7 +280,13 @@ termino:        operando                            { $$ = $1 ; }
             |   '-' operando %prec UNARY_SIGN       { sprintf (temp, "(- %s)", $2.code) ;
                                                       $$.code = gen_code (temp) ; }  
             |   '!' expresion %prec NOT             { sprintf (temp, "(not %s)", $2.code) ;
-                                                      $$.code = gen_code (temp) ; }    
+                                                      $$.code = gen_code (temp) ; } 
+            |   IDENTIF '[' expresion ']'           { if (isLocalVar ($1.code)) {
+                                                        sprintf (temp, "(aref %s_%s %s)", func_name, $1.code, $3.code) ; 
+                                                    } else {
+                                                        sprintf (temp, "(aref %s %s)", $1.code, $3.code) ;
+                                                    }
+                                                    $$.code = gen_code (temp) ; }   
             ;
 
 operando:       IDENTIF                 { if (isLocalVar($1.code)) {
@@ -295,12 +309,6 @@ r_print:        expresion                               { sprintf (temp, "(prin1
                                                           $$.code = gen_code (temp) ; }
             |   STRING                                  { sprintf (temp, "(prin1 \"%s\")", $1.code); 
                                                           $$.code = gen_code (temp) ; }
-            |   IDENTIF '[' expresion ']'               { if (isLocalVar($1.code)) {
-                                                            sprintf (temp, "(prin1 (aref %s_%s %s))", func_name, $1.code, $3.code); 
-                                                        } else {
-                                                            sprintf (temp, "(prin1 (aref %s %s))", $1.code, $3.code);
-                                                        }
-                                                        $$.code = gen_code (temp) ; }
             |   llamada                                 { sprintf (temp, "(prin1 %s)", $1.code); 
                                                           $$.code = gen_code (temp) ; }
             ;
