@@ -94,8 +94,8 @@ def_func:       funciones main_func                 { formatoLisp (strcat($1.cod
             |   main_func                           { formatoLisp ($1.code) ; }
             ;
 
-main_func:      main '(' params ')' '{' codigo '}'    { sprintf (temp, "(defun %s (%s)\n%s\n)\n", $1.code, $3.code, $6.code) ; 
-                                                        $$.code = gen_code (temp) ; }
+main_func:      main '(' params ')' '{' codigo '}'  { sprintf (temp, "(defun %s (%s)\n%s\n)\n", $1.code, $3.code, $6.code) ; 
+                                                      $$.code = gen_code (temp) ; }
             ;
 
 main:           MAIN                                { strcpy (func_name, $1.code) ; 
@@ -168,7 +168,9 @@ r_var_local:    IDENTIF                             { local_vars[local_vars_inde
                                                       $$.code = gen_code (temp) ; }
             ;
 
-llamada:        IDENTIF '(' argumentos ')'      { sprintf (temp, "(%s %s)", $1.code, $3.code) ;
+llamada:        IDENTIF expresion               { sprintf (temp, "(%s %s)", $1.code, $3.code) ;
+                                                  $$.code = gen_code (temp) ; }
+            |   IDENTIF '(' argumentos ')'      { sprintf (temp, "(%s %s)", $1.code, $3.code) ;
                                                   $$.code = gen_code (temp) ; }
             ;
 
@@ -320,7 +322,6 @@ termino:        operando                            { $$ = $1 ; }
                                                     $$.code = gen_code (temp) ; }   
             |   llamada                             { sprintf (temp, "%s", $1.code) ;
                                                       $$.code = gen_code (temp) ; }
-            
             |   '(' expresion ')'                   { $$ = $2 ; }
             ;
 
@@ -389,43 +390,43 @@ char *my_malloc (int nbytes)       // reserva n bytes de memoria dinamica
 
 void formatoLisp(char *input) 
 {
-    int total_paren = 0;
-    int indent = 0;
-    int paren_count = 0;
-    int is_loop = 0;
+    int total_paren = 0; // parentesis totales
+    int indent = 0; // numero de veces que hay que indentar
+    int paren_count = 0; // parentesis de la sentencia actual
+    int is_loop_or_if = 0; // indica que estamos dentro de un loop o un if (debemos indentar lo de dentro)
     int input_len = strlen(input);
 
     for (int i = 0; i < input_len; i++) { // analizamos la cadena entera
-        if (input[i] == '(') {
-            if (indent > 0 && paren_count == 0 && total_paren != 0) {
+        if (input[i] == '(') { // si el simbolo es un ( ...
+            if (indent > 0 && paren_count == 0 && total_paren != 0) { // si hay que indentar, hemos cerrado los parentesis de la sentencia actual y no quedan mas parentesis por cerrar
                 for (int j = 0; j < indent; j++) { 
-                    printf("\t");
+                    printf("\t"); // printeamos el numero de tabs correspondiente
                 }
             }
             printf("(");
             total_paren++;
             paren_count++;
         }
-        else if (input[i] == ')') {
+        else if (input[i] == ')') { // ... si el simbolo es un ) ...
             total_paren--;
-            if (paren_count > 0) {
+            if (paren_count > 0) { // para asegurar que no toma un valor negativo
                 paren_count--; 
             }
-            if (indent > 0 && paren_count == 0) {
-                if (total_paren == 0) {
-                    indent--;
+            if (indent > 0 && paren_count == 0) { // si hay que indentar y ya hemos cerrado los parentesis de la sentencia actual
+                if (total_paren == 0) { // si no quedan mas parentesis por cerrar
+                    indent--; // quitamos una indentacion
                 } 
-                if (input[i-1] == '\n' && is_loop) {
-                    indent--;
-                    for (int j = 0; j < indent; j++) { 
+                if (input[i-1] == '\n' && is_loop_or_if) { // si hay una new line despues del ) y estamos en un loop o en un if 
+                    indent--; // quitamos una indentacion 
+                    for (int j = 0; j < indent; j++) {  // y printeamos el numero de tabs correspondiente
                         printf("\t");
                     }
                 }
             }
-            indent = indent < 0 ? 0 : indent;
+            indent = indent < 0 ? 0 : indent; // para asegurar que no toma un valor negativo
             printf(")");
-        } else {
-            if (input[i] == '\n' && input[i+1] == '(') {
+        } else { // ... en caso contrario ...
+            if (input[i] == '\n' && input[i+1] == '(') { // reseteamos paren_count cuando estamos en una nueva sentencia
                 paren_count = 0;
             }
             printf("%c", input[i]);
@@ -436,8 +437,8 @@ void formatoLisp(char *input)
                 paren_count = 1;
             }
             if ((strncmp(input + i, "while ", 6) == 0) || (strncmp(input + i, "for ", 4) == 0) 
-                || (strncmp(input + i, "if ", 3) == 0)) {
-                is_loop = 1;
+                || (strncmp(input + i, "if ", 3) == 0)) { // si la palabra es alguna de las superiores, estamos en un loop o en un if
+                is_loop_or_if = 1;
             }
         }
     }
