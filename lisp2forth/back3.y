@@ -1,5 +1,5 @@
-/* Beatriz Sonsoles Encinas Muñoz, Marina Buitrago Pérez, 63-buitrago-encinas
-100451169@alumnos.uc3m.es 100428967@alumnos.uc3m.es */
+/* Beatriz Sonsoles Encinas Muñoz
+100451169@alumnos.uc3m.es */
 %{                          // SECCION 1 Declaraciones de C-Yacc
 
 #include <stdio.h>
@@ -108,13 +108,18 @@ lineas:         '(' sentencia ')'                                               
                                                                                       $$.code = gen_code (temp) ; }  
             ;
 
-llamada:        '(' IDENTIF argumentos ')'      { sprintf (temp, "%s %s", $3.code, $2.code) ;
-                                                  $$.code = gen_code (temp) ; }
+llamada:        '(' IDENTIF argumentos ')'      { sprintf (temp, "%s %s", $4.code, $2.code) ;
+                                                          $$.code = gen_code (temp) ; }
             ;
 
-argumentos:     expresion                       { sprintf (temp, "dup %s", $1.code) ;
+argumentos:     /* lambda */                    { $$.code = gen_code ("") ; }
+            |   r_argumentos                    { sprintf (temp, "%s", $1.code) ;
+                                                  $$.code = gen_code (temp) ; }                                                  
+            ;
+
+r_argumentos:   expresion                       { sprintf (temp, "dup %s", $1.code) ;
                                                   $$.code = gen_code (temp) ; }
-            |   argumentos expresion            { sprintf (temp, "dup %s %s", $1.code, $2.code) ;
+            |   expresion argumentos            { sprintf (temp, "dup %s dup %s", $1.code, $2.code) ;
                                                   $$.code = gen_code (temp) ; }                                                   
             ;
 
@@ -122,9 +127,9 @@ sentencia:      SETF IDENTIF expresion                                          
                                                                                       $$.code = gen_code (temp) ; }
             |   SETF '(' AREF IDENTIF expresion ')' expresion                       { sprintf (temp, "(setf (aref %s %s) %s)", $1.code, $3.code, $6.code) ;
                                                                                       $$.code = gen_code (temp) ; }
-            |   PUTS STRING                                                         { sprintf (temp, ". \" %s\"", $2.code) ; 
+            |   PUTS STRING                                                         { sprintf (temp, ".\" %s\"", $2.code) ; 
                                                                                       $$.code = gen_code (temp) ; }
-            |   PRINT STRING                                                        { sprintf (temp, ". \" %s\"", $2.code) ; 
+            |   PRINT STRING                                                        { sprintf (temp, ".\" %s\"", $2.code) ; 
                                                                                       $$.code = gen_code (temp) ; }
             |   PRINT expresion                                                     { sprintf (temp, "%s .", $2.code) ; 
                                                                                       $$.code = gen_code (temp) ; }
@@ -307,7 +312,7 @@ int yylex ()
     unsigned char cc ;
     char ops_expandibles [] = "!<=>|%/&+-*" ;
     char temp_str [256] ;
-    char str_main [6] ;
+    char str_main [256] ;
     t_keyword *symbol ;
 
     do {
@@ -338,17 +343,18 @@ int yylex ()
             }
         } else if (c == '\\') c = getchar () ;*/
 
-        /*if (c == '(') {
+        /*if (c == '(') {  // HACER CON LA GRAMATICA
             str_main[0] = c ;
+            cc = c;
             j = 0 ;
             do {
                 j++;
                 cc = getchar () ;
                 str_main[j] = cc ;
             } while (cc != '\n') ;
-            if ((strncmp(str_main, "(main)", 6)) == 0) {
+            if (strncmp(str_main, "(main)", 6) == 0) {
                 for (int j = 0; j < 6; j++) {
-                    putchar(str_main[j]);
+                    putchar(str_main[j]) ;
                 }
             }
             else {
