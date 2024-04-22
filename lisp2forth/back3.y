@@ -60,34 +60,28 @@ typedef struct s_attr {
 
 %%                            // Seccion 3 Gramatica - Semantico
 
-axioma:     decl_var_def_func                   { ; }
+axioma:     decl_var_def_func                                               { ; }
             ;
 
-decl_var_def_func:      decl_var                { printf ("%s", $1.code) ; }
-                        def_func                { ; }
-                    |   def_func                { ; }
+decl_var_def_func:      '(' decl_o_def                                      { printf ("%s\n", $2.code) ; }
                     ;
 
+decl_o_def:     SETQ var_global ')' r_decl_o_def                            { sprintf (temp, "%s\n%s", $2.code, $4.code) ;  
+                                                                              $$.code = gen_code (temp) ; }
+            |   DEFUN IDENTIF '(' params ')' codigo ')' r_decl_o_def        { sprintf (temp, ": %s %s ;\n%s", $2.code, $6.code, $8.code) ;
+                                                                              $$.code = gen_code (temp); }
+            ;
 
-decl_var:       '(' SETQ var_global ')'             { sprintf (temp, "%s\n", $3.code) ;  
-                                                      $$.code = gen_code (temp) ; }
-            |   '(' SETQ var_global ')' decl_var    { sprintf (temp, "%s\n%s", $3.code, $5.code) ;  
-                                                      $$.code = gen_code (temp) ; }
+r_decl_o_def:    /* lambda */                                               { $$.code = gen_code ("") ; }
+            |   '(' decl_o_def                                              { sprintf (temp, "%s", $2.code) ;  
+                                                                              $$.code = gen_code (temp) ; }
             ;
 
 var_global:     IDENTIF NUMBER                      { sprintf (temp, "variable %s\n%d %s !", $1.code, $2.value, $1.code) ;  
                                                       $$.code = gen_code (temp) ; }
-            |   IDENTIF '(' ARRAY NUMBER ')'        { sprintf (temp, "variable %s %s cells allot", $1.code, $4.value) ;  
+            |   IDENTIF '(' ARRAY NUMBER ')'        { sprintf (temp, "variable %s %d cells allot", $1.code, $4.value) ;  
                                                       $$.code = gen_code (temp) ; }
-            ;
-
-def_func:       funcion                             { printf ("%s", $1.code) ; }
-            |   funcion def_func                    { printf ("%s%s", $1.code, $2.code) ; }
-            ;
-
-funcion:        '(' DEFUN IDENTIF '(' params ')' codigo ')'     { sprintf (temp, ": %s %s ;", $3.code, $7.code) ;
-                                                                  $$.code = gen_code (temp); }                                            
-            ;                                  
+            ; 
 
 params:         /* lambda */                        { $$.code = gen_code ("") ; }
             |   r_params                            { sprintf (temp, "%s", $1.code) ;
@@ -107,8 +101,6 @@ codigo:         lineas                              { sprintf (temp, "%s", $1.co
             ;
 
 lineas:         '(' sentencia ')'                                                   { sprintf (temp, "%s", $2.code) ; 
-                                                                                      $$.code = gen_code (temp) ; }
-            |   decl_var                                                            { sprintf (temp, "%s", $1.code) ; 
                                                                                       $$.code = gen_code (temp) ; }
             |   '(' SETQ IDENTIF expresion ')'                                      { sprintf (temp, "variable %s\n%s %s !", $3.code, $3.code, $4.code) ; 
                                                                                       $$.code = gen_code (temp) ; }
@@ -141,41 +133,41 @@ sentencia:      SETF IDENTIF expresion                                          
             ;       
 
 expresion:      termino                                     { $$ = $1 ; }
-            |   '(' '+' expresion expresion ')'             { sprintf (temp, "(+ %s %s)", $3.code, $4.code) ;
+            |   '(' '+' expresion expresion ')'             { sprintf (temp, "%s %s +", $3.code, $4.code) ;
                                                               $$.code = gen_code (temp) ; }
-            |   '(' '-' expresion expresion ')'             { sprintf (temp, "(- %s %s)", $3.code, $4.code) ;
+            |   '(' '-' expresion expresion ')'             { sprintf (temp, "%s %s -", $3.code, $4.code) ;
                                                               $$.code = gen_code (temp) ; }
-            |   '(' '*' expresion expresion ')'             { sprintf (temp, "(* %s %s)", $3.code, $4.code) ;
+            |   '(' '*' expresion expresion ')'             { sprintf (temp, "%s %s *", $3.code, $4.code) ;
                                                               $$.code = gen_code (temp) ; }
-            |   '(' '/' expresion expresion ')'             { sprintf (temp, "(/ %s %s)", $3.code, $4.code) ;
+            |   '(' '/' expresion expresion ')'             { sprintf (temp, "%s %s /", $3.code, $4.code) ;
                                                               $$.code = gen_code (temp) ; }
-            |   '(' '%' expresion expresion ')'             { sprintf (temp, "(mod %s %s)", $3.code, $4.code) ;
+            |   '(' '%' expresion expresion ')'             { sprintf (temp, "%s %s mod", $3.code, $4.code) ;
                                                               $$.code = gen_code (temp) ; }
-            |   '(' AND expresion expresion ')'             { sprintf (temp, "(and %s %s)", $3.code, $4.code) ;
+            |   '(' AND expresion expresion ')'             { sprintf (temp, "%s %s and", $3.code, $4.code) ;
                                                               $$.code = gen_code (temp) ; }
-            |   '(' OR expresion expresion ')'              { sprintf (temp, "(or %s %s)", $3.code, $4.code) ;
+            |   '(' OR expresion expresion ')'              { sprintf (temp, "%s %s or", $3.code, $4.code) ;
                                                               $$.code = gen_code (temp) ; }
-            |   '(' EQUAL expresion expresion ')'           { sprintf (temp, "(= %s %s)", $3.code, $4.code) ;
+            |   '(' EQUAL expresion expresion ')'           { sprintf (temp, "%s %s =", $3.code, $4.code) ;
                                                               $$.code = gen_code (temp) ; }
-            |   '(' NOTEQUAL expresion expresion ')'        { sprintf (temp, "(/= %s %s)", $3.code, $4.code) ;
+            |   '(' NOTEQUAL expresion expresion ')'        { sprintf (temp, "%s %s = 0=", $3.code, $4.code) ;
                                                               $$.code = gen_code (temp) ; }
-            |   '(' '<' expresion expresion ')'             { sprintf (temp, "(< %s %s)", $3.code, $4.code) ;
+            |   '(' '<' expresion expresion ')'             { sprintf (temp, "%s %s <", $3.code, $4.code) ;
                                                               $$.code = gen_code (temp) ; }
-            |   '(' '>' expresion expresion ')'             { sprintf (temp, "(> %s %s)", $3.code, $4.code) ;
+            |   '(' '>' expresion expresion ')'             { sprintf (temp, "%s %s >", $3.code, $4.code) ;
                                                               $$.code = gen_code (temp) ; }
-            |   '(' GREATEREQUAL expresion expresion ')'    { sprintf (temp, "(%s %s %s)", $2.code, $3.code, $4.code) ;
+            |   '(' GREATEREQUAL expresion expresion ')'    { sprintf (temp, "%s %s %s", $3.code, $4.code, $2.code) ;
                                                               $$.code = gen_code (temp) ; }
-            |   '(' SMALLEREQUAL expresion expresion ')'    { sprintf (temp, "(%s %s %s)", $2.code, $3.code, $4.code) ;
+            |   '(' SMALLEREQUAL expresion expresion ')'    { sprintf (temp, "%s %s %s", $3.code, $4.code, $2.code) ;
                                                               $$.code = gen_code (temp) ; }
             ;
 
 
 termino:        operando                            { $$ = $1 ; }                          
-            |   '+' operando %prec UNARY_SIGN       { sprintf (temp, "(+ %s)", $2.code) ;
+            |   '+' operando %prec UNARY_SIGN       { sprintf (temp, "%s", $2.code) ;
                                                       $$.code = gen_code (temp) ; }
-            |   '-' operando %prec UNARY_SIGN       { sprintf (temp, "(- %s)", $2.code) ;
+            |   '-' operando %prec UNARY_SIGN       { sprintf (temp, "negate %s", $2.code) ;
                                                       $$.code = gen_code (temp) ; }  
-            |   '!' expresion %prec NOT             { sprintf (temp, "(not %s)", $2.code) ;
+            |   '!' expresion %prec NOT             { sprintf (temp, "%s 0=", $2.code) ;
                                                       $$.code = gen_code (temp) ; } 
             /*|   IDENTIF '[' expresion ']'           { if (isLocalVar ($1.code)) {
                                                         sprintf (temp, "(aref %s_%s %s)", func_name, $1.code, $3.code) ; 
@@ -235,62 +227,6 @@ char *my_malloc (int nbytes)       // reserva n bytes de memoria dinamica
     return p ;
 }
 
-void formatoLisp(char *input) 
-{
-    int total_paren = 0;
-    int indent = 0;
-    int paren_count = 0;
-    int is_loop = 0;
-    int input_len = strlen(input);
-
-    for (int i = 0; i < input_len; i++) { // analizamos la cadena entera
-        if (input[i] == '(') {
-            if (indent > 0 && paren_count == 0 && total_paren != 0) {
-                for (int j = 0; j < indent; j++) { 
-                    printf("\t");
-                }
-            }
-            printf("(");
-            total_paren++;
-            paren_count++;
-        }
-        else if (input[i] == ')') {
-            total_paren--;
-            if (paren_count > 0) {
-                paren_count--; 
-            }
-            if (indent > 0 && paren_count == 0) {
-                if (total_paren == 0) {
-                    indent--;
-                } 
-                if (input[i-1] == '\n' && is_loop) {
-                    indent--;
-                    for (int j = 0; j < indent; j++) { 
-                        printf("\t");
-                    }
-                }
-            }
-            indent = indent < 0 ? 0 : indent;
-            printf(")");
-        } else {
-            if (input[i] == '\n' && input[i+1] == '(') {
-                paren_count = 0;
-            }
-            printf("%c", input[i]);
-            if ((strncmp(input + i, "defun ", 6) == 0) || (strncmp(input + i, "if ", 3) == 0)
-                || (strncmp(input + i, "while ", 6) == 0) || (strncmp(input + i, "for ", 4) == 0) 
-                || (strncmp(input + i, "progn", 5) == 0)) {
-                indent++; // si la siguiente palabra es alguna de las superiores, añadir un indent más
-                paren_count = 1;
-            }
-            if ((strncmp(input + i, "while ", 6) == 0) || (strncmp(input + i, "for ", 4) == 0) 
-                || (strncmp(input + i, "if ", 3) == 0)) {
-                is_loop = 1;
-            }
-        }
-    }
-} 
-
 
 /***************************************************************************/
 /********************** Seccion de Palabras Reservadas *********************/
@@ -302,7 +238,8 @@ typedef struct s_keyword { // para las palabras reservadas de C
 } t_keyword ;
 
 t_keyword keywords [] = { // define las palabras reservadas y los
-    "loop while",  WHILE,           // y los token asociados
+    "defun",       DEFUN,           // y los token asociados
+    "loop while",  WHILE,
     "do",          DO,
     "if",          IF,
     "progn",       PROGN,
@@ -365,10 +302,12 @@ char *gen_code (char *name)     // copia el argumento a un
 int yylex ()
 {
     int i ;
+    int j ;
     unsigned char c ;
     unsigned char cc ;
     char ops_expandibles [] = "!<=>|%/&+-*" ;
     char temp_str [256] ;
+    char str_main [6] ;
     t_keyword *symbol ;
 
     do {
@@ -380,7 +319,7 @@ int yylex ()
             } while (c != '\n') ;
         }
 
-        if (c == '/') {	// Si la linea contiene un / puede ser inicio de comentario
+        /*if (c == '/') {	// Si la linea contiene un / puede ser inicio de comentario
             cc = getchar () ;
             if (cc != '/') {   // Si el siguiente char es /  es un comentario, pero...
                 ungetc (cc, stdin) ;
@@ -397,7 +336,25 @@ int yylex ()
                     }
                 }
             }
-        } else if (c == '\\') c = getchar () ;
+        } else if (c == '\\') c = getchar () ;*/
+
+        /*if (c == '(') {
+            str_main[0] = c ;
+            j = 0 ;
+            do {
+                j++;
+                cc = getchar () ;
+                str_main[j] = cc ;
+            } while (cc != '\n') ;
+            if ((strncmp(str_main, "(main)", 6)) == 0) {
+                for (int j = 0; j < 6; j++) {
+                    putchar(str_main[j]);
+                }
+            }
+            else {
+                c = getchar () ;
+            }
+        }*/
 		
         if (c == '\n')
             n_line++ ;
