@@ -34,8 +34,9 @@ typedef struct s_attr {
 %token NUMBER        
 %token IDENTIF       // Identificador=variable
 %token STRING        // identifica una cadena
+%token MAIN          // identifica el comienzo del proc. main
 %token DEFUN         // identifica la definición de una función
-%token WHILE         // identifica el bucle while
+%token LOOP         // identifica el bucle while
 %token DO            // identifica las acciones a realizar dentro del bucle while
 %token PRINT         // identifica la funcion prin1
 %token PUTS          // identifica la funcion print
@@ -60,81 +61,68 @@ typedef struct s_attr {
 
 %%                            // Seccion 3 Gramatica - Semantico
 
-axioma:     decl_var_def_func                                               { ; }
+axioma:         sentencia                                                           { ; }
+                ;
+      
+sentencia:      '(' r_sentencia ')'                                                 { ; }
+            |   '(' r_sentencia ')' sentencia                                       { ; }
             ;
 
-decl_var_def_func:      '(' decl_o_def                                      { printf ("%s\n", $2.code) ; }
-                    ;
-
-decl_o_def:     SETQ var_global ')' r_decl_o_def                            { sprintf (temp, "%s\n%s", $2.code, $4.code) ;  
-                                                                              $$.code = gen_code (temp) ; }
-            |   DEFUN IDENTIF '(' params ')' codigo ')' r_decl_o_def        { sprintf (temp, ": %s %s ;\n%s", $2.code, $6.code, $8.code) ;
-                                                                              $$.code = gen_code (temp); }
+r_sentencia:    SETQ var_global                                                     { printf ("%s\n", $2.code) ; }
+            |   DEFUN IDENTIF '(' params ')' codigo                                 { printf (": %s (%s -- )\n%s ;\n", $2.code, $4.code, $6.code) ; }
+            |   DEFUN MAIN '(' params ')' codigo                                    { printf (": %s (%s -- )\n%s ;\n", $2.code, $4.code, $6.code) ; }
+            |   MAIN                                                                { printf ("%s\n", $1.code) ; }
             ;
 
-r_decl_o_def:    /* lambda */                                               { $$.code = gen_code ("") ; }
-            |   '(' decl_o_def                                              { sprintf (temp, "%s", $2.code) ;  
-                                                                              $$.code = gen_code (temp) ; }
-            ;
-
-var_global:     IDENTIF NUMBER                      { sprintf (temp, "variable %s\n%d %s !", $1.code, $2.value, $1.code) ;  
-                                                      $$.code = gen_code (temp) ; }
-            |   IDENTIF '(' ARRAY NUMBER ')'        { sprintf (temp, "variable %s %d cells allot", $1.code, $4.value) ;  
-                                                      $$.code = gen_code (temp) ; }
+var_global:     IDENTIF NUMBER                                                      { sprintf (temp, "variable %s\n%d dup %s !", $1.code, $2.value, $1.code) ;  
+                                                                                      $$.code = gen_code (temp) ; }
+            |   IDENTIF '(' ARRAY NUMBER ')'                                        { sprintf (temp, "variable %s %d cells allot", $1.code, $4.value) ;  
+                                                                                      $$.code = gen_code (temp) ; }
             ; 
 
+codigo:         lineas                                                              { sprintf (temp, "%s\n", $1.code) ;
+                                                                                      $$.code = gen_code (temp) ; }
+            |   lineas codigo                                                       { sprintf (temp, "%s\n%s", $1.code, $2.code) ;
+                                                                                      $$.code = gen_code (temp) ; }
+            ;
+
+lineas:         '(' SETQ var_global ')'                                             { sprintf (temp, "%s", $3.code) ;
+                                                                                      $$.code = gen_code (temp) ; }
+            |   '(' IDENTIF ')'                                                     { sprintf (temp, "%s", $3.code) ;
+                                                                                      $$.code = gen_code (temp) ; }
+            |   '(' IDENTIF argumentos ')'                                          { sprintf (temp, "%s %s", $3.code, $2.code) ;
+                                                                                      $$.code = gen_code (temp) ; }
+            |   '(' SETF IDENTIF expresion ')'                                      { sprintf (temp, "%s dup %s !", $4.code, $3.code) ; 
+                                                                                      $$.code = gen_code (temp) ; }
+            |   '(' SETF '(' AREF IDENTIF expresion ')' expresion ')'               { sprintf (temp, "ARREGLAR %s", $2.code) ;
+                                                                                      $$.code = gen_code (temp) ; }
+            |   '(' PUTS STRING ')'                                                 { sprintf (temp, ".\" %s\"", $3.code) ; 
+                                                                                      $$.code = gen_code (temp) ; }
+            |   '(' PRINT STRING ')'                                                { sprintf (temp, ".\" %s\"", $3.code) ; 
+                                                                                      $$.code = gen_code (temp) ; }
+            |   '(' PRINT expresion ')'                                             { sprintf (temp, "%s .", $3.code) ; 
+                                                                                      $$.code = gen_code (temp) ; }
+            |   '(' LOOP expresion DO codigo ')'                                    { sprintf (temp, "begin %s while %s repeat", $3.code, $5.code) ;
+                                                                                      $$.code = gen_code (temp) ; }
+            |   '(' IF expresion '(' PROGN codigo ')' resto_if )'
+            |   '(' RETURN IDENTIF retorno ')'
+            ;  
+
 params:         /* lambda */                        { $$.code = gen_code ("") ; }
-            |   r_params                            { sprintf (temp, "%s", $1.code) ;
+            |   r_params                            { sprintf (temp, " %s", $1.code) ;
                                                       $$.code = gen_code (temp) ; }                                                   
             ;
 
-r_params:       IDENTIF                             { sprintf (temp, "dup %s", $1.code) ;
+r_params:       IDENTIF                             { sprintf (temp, "%s", $1.code) ;
                                                       $$.code = gen_code (temp) ; }
-            |   IDENTIF r_params                    { sprintf (temp, "dup %s %s", $1.code, $2.code) ;
+            |   IDENTIF r_params                    { sprintf (temp, "%s %s", $1.code, $2.code) ;
                                                       $$.code = gen_code (temp) ; }                                                   
             ;
 
-codigo:         lineas                              { sprintf (temp, "%s", $1.code) ;
-                                                      $$.code = gen_code (temp) ; }
-            |   codigo lineas                       { sprintf (temp, "%s\n%s", $1.code, $2.code) ;
-                                                      $$.code = gen_code (temp) ; }
-            ;
-
-lineas:         '(' sentencia ')'                                                   { sprintf (temp, "%s", $2.code) ; 
-                                                                                      $$.code = gen_code (temp) ; }
-            |   '(' SETQ IDENTIF expresion ')'                                      { sprintf (temp, "variable %s\n%s %s !", $3.code, $3.code, $4.code) ; 
-                                                                                      $$.code = gen_code (temp) ; }
-            |   llamada                                                             { sprintf (temp, "%s", $1.code) ; 
-                                                                                      $$.code = gen_code (temp) ; }  
-            ;
-
-llamada:        '(' IDENTIF argumentos ')'      { sprintf (temp, "%s %s", $4.code, $2.code) ;
-                                                          $$.code = gen_code (temp) ; }
-            ;
-
-argumentos:     /* lambda */                    { $$.code = gen_code ("") ; }
-            |   r_argumentos                    { sprintf (temp, "%s", $1.code) ;
-                                                  $$.code = gen_code (temp) ; }                                                  
-            ;
-
-r_argumentos:   expresion                       { sprintf (temp, "dup %s", $1.code) ;
+argumentos:     expresion                       { sprintf (temp, "%s", $1.code) ;
                                                   $$.code = gen_code (temp) ; }
-            |   expresion argumentos            { sprintf (temp, "dup %s dup %s", $1.code, $2.code) ;
+            |   expresion argumentos            { sprintf (temp, "%s %s", $1.code, $2.code) ;
                                                   $$.code = gen_code (temp) ; }                                                   
-            ;
-
-sentencia:      SETF IDENTIF expresion                                              { sprintf (temp, "%s %s !", $3.code, $2.code) ; 
-                                                                                      $$.code = gen_code (temp) ; }
-            |   SETF '(' AREF IDENTIF expresion ')' expresion                       { sprintf (temp, "(setf (aref %s %s) %s)", $1.code, $3.code, $6.code) ;
-                                                                                      $$.code = gen_code (temp) ; }
-            |   PUTS STRING                                                         { sprintf (temp, ".\" %s\"", $2.code) ; 
-                                                                                      $$.code = gen_code (temp) ; }
-            |   PRINT STRING                                                        { sprintf (temp, ".\" %s\"", $2.code) ; 
-                                                                                      $$.code = gen_code (temp) ; }
-            |   PRINT expresion                                                     { sprintf (temp, "%s .", $2.code) ; 
-                                                                                      $$.code = gen_code (temp) ; }
-            |   WHILE expresion DO codigo                                           { sprintf (temp, "begin %s while %s repeat", $2.code, $4.code) ;
-                                                                                      $$.code = gen_code (temp) ; }
             ;       
 
 expresion:      termino                                     { $$ = $1 ; }
@@ -174,18 +162,9 @@ termino:        operando                            { $$ = $1 ; }
                                                       $$.code = gen_code (temp) ; }  
             |   '!' expresion %prec NOT             { sprintf (temp, "%s 0=", $2.code) ;
                                                       $$.code = gen_code (temp) ; } 
-            /*|   IDENTIF '[' expresion ']'           { if (isLocalVar ($1.code)) {
-                                                        sprintf (temp, "(aref %s_%s %s)", func_name, $1.code, $3.code) ; 
-                                                    } else {
-                                                        sprintf (temp, "(aref %s %s)", $1.code, $3.code) ;
-                                                    }
-                                                    $$.code = gen_code (temp) ; }   
-            |   llamada                             { sprintf (temp, "%s", $1.code) ;
-                                                      $$.code = gen_code (temp) ; }
-            |   '(' expresion ')'                   { $$ = $2 ; }*/
             ;
 
-operando:       IDENTIF                 { sprintf (temp, "@ %s", $1.code) ;
+operando:       IDENTIF                 { sprintf (temp, "%s", $1.code) ;
                                           $$.code = gen_code (temp) ; }
             |   NUMBER                  { sprintf (temp, "%d", $1.value) ;
                                           $$.code = gen_code (temp) ; }
@@ -243,8 +222,9 @@ typedef struct s_keyword { // para las palabras reservadas de C
 } t_keyword ;
 
 t_keyword keywords [] = { // define las palabras reservadas y los
-    "defun",       DEFUN,           // y los token asociados
-    "loop while",  WHILE,
+    "main",        MAIN,           // y los token asociados
+    "defun",       DEFUN,
+    "loop while",  LOOP,
     "do",          DO,
     "if",          IF,
     "progn",       PROGN,
