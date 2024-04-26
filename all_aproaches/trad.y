@@ -1,5 +1,5 @@
-/* Beatriz Sonsoles Encinas Muñoz, Marina Buitrago Pérez, 63-buitrago-encinas
-100451169@alumnos.uc3m.es 100428967@alumnos.uc3m.es */
+/* Beatriz Sonsoles Encinas Muñoz
+100451169@alumnos.uc3m.es */
 %{                          // SECCION 1 Declaraciones de C-Yacc
 
 #include <stdio.h>
@@ -168,9 +168,7 @@ r_var_local:    IDENTIF                             { local_vars[local_vars_inde
                                                       $$.code = gen_code (temp) ; }
             ;
 
-llamada:        IDENTIF expresion               { sprintf (temp, "(%s %s)", $1.code, $3.code) ;
-                                                  $$.code = gen_code (temp) ; }
-            |   IDENTIF '(' argumentos ')'      { sprintf (temp, "(%s %s)", $1.code, $3.code) ;
+llamada:        IDENTIF '(' argumentos ')'      { sprintf (temp, "(%s %s)", $1.code, $3.code) ;
                                                   $$.code = gen_code (temp) ; }
             ;
 
@@ -197,12 +195,6 @@ sentencia:      IDENTIF '=' expresion ';'                                       
                                                                                           sprintf (temp, "(setf (aref %s %s) %s)", $1.code, $3.code, $6.code) ;
                                                                                       }
                                                                                       $$.code = gen_code (temp) ; }
-            |   IDENTIF ',' vars_left '=' operando ',' vars_right ';'               { if (isLocalVar ($1.code)) {
-                                                                                          sprintf (temp, "(setf (values %s_%s %s) %s %s)", func_name, $1.code, $3.code, $5.code, $7.code) ; 
-                                                                                      } else {
-                                                                                          sprintf (temp, "(setf (values %s %s) %s %s)", $1.code, $3.code, $5.code, $7.code) ;
-                                                                                      }
-                                                                                      $$.code = gen_code (temp) ; }
             |   PRINTF '(' STRING ',' print ')' ';'                                 { sprintf (temp, "%s", $5.code) ;  
                                                                                       $$.code = gen_code (temp) ; }
             |   PUTS '(' STRING ')' ';'                                             { sprintf (temp, "(print \"%s\")", $3.code) ; 
@@ -215,27 +207,7 @@ sentencia:      IDENTIF '=' expresion ';'                                       
                                                                                       $$.code = gen_code (temp) ; }
             |   RETURN retorno ';'                                                  { sprintf (temp, "(return-from %s %s)", func_name, $2.code) ; 
                                                                                       $$.code = gen_code (temp) ; }
-            ;
-
-vars_left:      IDENTIF                                                             { if (isLocalVar ($1.code)) {
-                                                                                          sprintf (temp, "%s_%s", func_name, $1.code) ; 
-                                                                                      } else {
-                                                                                          sprintf (temp, "%s", $1.code) ;
-                                                                                      }
-                                                                                      $$.code = gen_code (temp) ; }
-            |   IDENTIF ',' vars_left                                               { if (isLocalVar ($1.code)) {
-                                                                                          sprintf (temp, "%s_%s %s", func_name, $1.code, $3.code) ; 
-                                                                                      } else {
-                                                                                          sprintf (temp, "%s %s", $1.code, $3.code) ;
-                                                                                      }
-                                                                                      $$.code = gen_code (temp) ; }
-            ; 
-
-vars_right:     operando                                                            { sprintf (temp, "%s", $1.code) ;
-                                                                                      $$.code = gen_code (temp) ; }
-            |   operando ',' vars_right                                             { sprintf (temp, "%s %s", $1.code, $3.code) ;
-                                                                                      $$.code = gen_code (temp) ; }
-            ;         
+            ;        
 
 resto_if:       /* lambda */                    { $$.code = gen_code ("") ; }
             |   ELSE '{' codigo '}'             { sprintf (temp, "\n(progn %s\n)", $3.code) ;
@@ -251,15 +223,15 @@ inicializ:      IDENTIF '=' NUMBER              { if (isLocalVar ($1.code)) {
             ;
 
 inc_dec:        IDENTIF '=' IDENTIF '+' expresion               { if (isLocalVar ($1.code)) {
-                                                                      sprintf (temp, "(setq %s_%s (+ %s_%s %s))", func_name, $1.code, func_name, $3.code, $5.code) ;
+                                                                      sprintf (temp, "(setf %s_%s (+ %s_%s %s))", func_name, $1.code, func_name, $3.code, $5.code) ;
                                                                   } else {
-                                                                      sprintf (temp, "(setq %s (+ %s %s))", $1.code, $3.code, $5.code) ;
+                                                                      sprintf (temp, "(setf %s (+ %s %s))", $1.code, $3.code, $5.code) ;
                                                                   }
                                                                   $$.code = gen_code (temp) ; }
             |   IDENTIF '=' IDENTIF '-' expresion               { if (isLocalVar ($1.code)) {
-                                                                      sprintf (temp, "(setq %s_%s (- %s_%s %s))", func_name, $1.code, func_name, $3.code, $5.code) ;
+                                                                      sprintf (temp, "(setf %s_%s (- %s_%s %s))", func_name, $1.code, func_name, $3.code, $5.code) ;
                                                                   } else {
-                                                                      sprintf (temp, "(setq %s (- %s %s))", $1.code, $3.code, $5.code) ;
+                                                                      sprintf (temp, "(setf %s (- %s %s))", $1.code, $3.code, $5.code) ;
                                                                   }
                                                                   $$.code = gen_code (temp) ; }
             ;
