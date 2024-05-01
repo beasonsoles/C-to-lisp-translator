@@ -61,46 +61,45 @@ typedef struct s_attr {
 %left '*' '/' MOD               // mayor orden de precedencia que '+' y '-'
 %left UNARY_SIGN NOT            // orden de precedencia más alto
 
-%%                            // Seccion 3 Gramatica - Semantico
+                            // Seccion 3 Gramatica - Semantico
+%%
 
-axioma:         sentencia                                                   { ; }
-                ;
+axioma:         decl_def                                                    { ; }
+            ;
       
-sentencia:      '(' r_sentencia ')'                                         { ; }
-            |   '(' r_sentencia ')' sentencia                               { ; }
+decl_def:       '(' r_decl_def ')'                                          { ; }
+            |   '(' r_decl_def ')' decl_def                                 { ; }
             ;
 
-r_sentencia:    SETQ variable                                               { printf ("%s\n", $2.code) ; }
-            |   DEFUN IDENTIF '(' params ')' codigo                         { printf (": %s (%s -- )\n%s ;\n", $2.code, $4.code, $6.code) ; }
-            |   DEFUN MAIN '(' params ')' codigo                            { printf (": %s (%s -- )\n%s ;\n", $2.code, $4.code, $6.code) ; }
+r_decl_def:     SETQ variable                                               { printf ("%s", $2.code) ; }
+            |   DEFUN IDENTIF '(' params ')' codigo                         { printf (": %s\n%s ;\n", $2.code, $6.code) ; }
+            |   DEFUN MAIN '(' params ')' codigo                            { printf (": %s\n%s ;\n", $2.code, $6.code) ; }
             |   MAIN                                                        { printf ("%s\n", $1.code) ; }
             ;
 
-variable:       IDENTIF expresion                                           { sprintf (temp, "variable %s\n%s dup %s !", $1.code, $2.code, $1.code) ;  
+variable:       IDENTIF expresion                                           { sprintf (temp, "variable %s\n%s %s !\n", $1.code, $2.code, $1.code) ;
                                                                               $$.code = gen_code (temp) ; }
-            |   IDENTIF '(' MAKE '-' ARRAY NUMBER ')'                       { sprintf (temp, "variable %s %d cells allot", $1.code, $6.value) ;  
+            |   IDENTIF '(' MAKE '-' ARRAY NUMBER ')'                       { sprintf (temp, "variable %s %d cells allot\n", $1.code, $6.value) ;
                                                                               $$.code = gen_code (temp) ; }
             ; 
 
 params:         /* lambda */                                                { $$.code = gen_code ("") ; }
-            |   r_params                                                    { sprintf (temp, " %s", $1.code) ;
-                                                                              $$.code = gen_code (temp) ; }                                                   
+            |   r_params                                                    { printf ("%s", $1.code) ; }
             ;
 
-r_params:       IDENTIF                                                     { sprintf (temp, "%s", $1.code) ;
+r_params:       IDENTIF                                                     { sprintf (temp, "variable %s\n", $1.code) ;
                                                                               $$.code = gen_code (temp) ; }
-            |   IDENTIF r_params                                            { sprintf (temp, "%s %s", $1.code, $2.code) ;
-                                                                              $$.code = gen_code (temp) ; }                                                   
-            ;
-
-codigo:         lineas                                                      { sprintf (temp, "%s", $1.code) ;
-                                                                              $$.code = gen_code (temp) ; }
-            |   lineas codigo                                               { sprintf (temp, "%s\n%s", $1.code, $2.code) ;
+            |   IDENTIF r_params                                            { sprintf (temp, "variable %s\n%s", $1.code, $2.code) ;
                                                                               $$.code = gen_code (temp) ; }
             ;
 
-lineas:         '(' SETQ variable ')'                                       { sprintf (temp, "%s", $3.code) ;
+codigo:         sentencia                                                   { sprintf (temp, "%s", $1.code) ;
                                                                               $$.code = gen_code (temp) ; }
+            |   sentencia codigo                                            { sprintf (temp, "%s\n%s", $1.code, $2.code) ;
+                                                                              $$.code = gen_code (temp) ; }
+            ;
+
+sentencia:      '(' SETQ variable ')'                                       { printf ("%s\n", $3.code) ; }
             |   '(' llamada ')'                                             { sprintf (temp, "%s", $2.code) ;
                                                                               $$.code = gen_code (temp) ; }
             |   '(' SETF IDENTIF expresion ')'                              { sprintf (temp, "%s dup %s !", $4.code, $3.code) ; 
@@ -113,9 +112,9 @@ lineas:         '(' SETQ variable ')'                                       { sp
                                                                               $$.code = gen_code (temp) ; }
             |   '(' PRINT expresion ')'                                     { sprintf (temp, "%s .", $3.code) ; 
                                                                               $$.code = gen_code (temp) ; }
-            |   '(' LOOP WHILE expresion DO codigo ')'                      { sprintf (temp, "begin \n%s\nwhile \n%s\nrepeat", $4.code, $6.code) ;
+            |   '(' LOOP WHILE expresion DO codigo ')'                      { sprintf (temp, "begin \n%s\nwhile \n%s\nrepeat \ndrop", $4.code, $6.code) ;
                                                                               $$.code = gen_code (temp) ; }
-            |   '(' IF expresion '(' PROGN codigo ')' resto_if ')'          { sprintf (temp, "%s if\n%s %s \nthen", $3.code, $6.code, $8.code) ; 
+            |   '(' IF expresion '(' PROGN codigo ')' resto_if ')'          { sprintf (temp, "%s if\n%s %s \nthen \ndrop", $3.code, $6.code, $8.code) ; 
                                                                               $$.code = gen_code (temp) ; }
             |   '(' RETURN '-' FROM IDENTIF retorno ')'                     { sprintf (temp, "%s", $6.code) ; 
                                                                               $$.code = gen_code (temp) ; }
@@ -132,7 +131,7 @@ llamada:        IDENTIF                                                     { sp
 argumentos:     expresion                                                   { sprintf (temp, "%s", $1.code) ;
                                                                               $$.code = gen_code (temp) ; }
             |   expresion argumentos                                        { sprintf (temp, "%s %s", $1.code, $2.code) ;
-                                                                              $$.code = gen_code (temp) ; }                                                   
+                                                                              $$.code = gen_code (temp) ; }
             ;       
 
 resto_if:       /* lambda */                                                { $$.code = gen_code ("") ; }
@@ -185,7 +184,7 @@ expresion:      termino                                                     { $$
 termino:        operando                            { $$ = $1 ; }                          
             |   '+' operando %prec UNARY_SIGN       { sprintf (temp, "%s", $2.code) ;
                                                       $$.code = gen_code (temp) ; }
-            |   '-' operando %prec UNARY_SIGN       { sprintf (temp, "negate %s", $2.code) ;
+            |   '-' operando %prec UNARY_SIGN       { sprintf (temp, "%s negate", $2.code) ;
                                                       $$.code = gen_code (temp) ; }  
             |   '!' expresion %prec NOT             { sprintf (temp, "%s 0=", $2.code) ;
                                                       $$.code = gen_code (temp) ; } 
