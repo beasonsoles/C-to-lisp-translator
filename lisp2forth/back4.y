@@ -15,10 +15,25 @@ char *mi_malloc (int) ;
 char *gen_code (char *) ;
 char *int_to_string (int) ;
 char *char_to_string (char) ;
+int isParam (char *var) ;
+//void insertSymbol (char* func_name, char* simbolo, int index) ;
 
 char temp [2048] ;
+char func_name [256] = "" ; // para identificar los parametros por el nombre de la funcion
+char* params [256] ;
+int params_index = 0 ;
 
 // Definitions for explicit attributes
+
+/*typedef struct s_params { // representa los parametros de una funcion
+    char *func ; // nombre de la funcion que recibe los parametros
+    char *param ; // nombre de cada parametro
+    int valor ; // valor de cada parametro
+} t_params ;
+
+t_params params [] = {  
+    NULL,     NULL,     0    // para marcar el fin de la tabla
+} ;*/
 
 typedef struct s_attr {
         int value ;
@@ -70,8 +85,10 @@ decl_def:       '(' r_decl_def ')'                                  { ; }
             ;
 
 r_decl_def:     SETQ variable                                       { printf ("%s\n", $2.code) ; }
-            |   DEFUN IDENTIF '(' params ')' codigo                 { printf (": %s \n%s ;\n", $2.code, $6.code) ; }
-            |   DEFUN MAIN '(' params ')' codigo                    { printf (": %s \n%s ;\n", $2.code, $6.code) ; }
+            |   DEFUN nombre_func '(' params ')' codigo             { printf (": %s \n%s ;\n", $2.code, $6.code) ;
+                                                                      //for (int i=0; i<params_index;i++) { printf("params:%s\n", params[i]); } 
+                                                                      for (int i = 0; i < params_index; i++) { params[i] = NULL; }
+                                                                      params_index = 0 ; }
             |   MAIN                                                { printf ("%s\n", $1.code) ; }
             ;
 
@@ -81,16 +98,38 @@ variable:       IDENTIF expresion                                   { sprintf (t
                                                                       $$.code = gen_code (temp) ; }
             ; 
 
-params:         /* lambda */                                        { $$.code = gen_code ("") ; }
+nombre_func:    IDENTIF                                             { strcpy (func_name, $1.code) ; 
+                                                                      sprintf (temp, "%s", $1.code) ; 
+                                                                      $$.code = gen_code (temp) ; }
+            |   MAIN                                                { strcpy (func_name, $1.code) ; 
+                                                                      sprintf (temp, "%s", $1.code) ; 
+                                                                      $$.code = gen_code (temp) ; }
+            ;
+
+params:         /* lambda */                                        { ; }
+            |   r_params                                            { ; }
+            ;
+
+r_params:       IDENTIF                                             { params[params_index] = $1.code ; 
+                                                                      params_index++; }
+            |   IDENTIF                                             { params[params_index] = $1.code ; 
+                                                                      params_index++; $$.code = gen_code ("") ; }
+                    r_params                                        { ; }
+            ;
+
+/*params:                                                 { $$.code = gen_code ("") ; }
             |   r_params                                            { printf ("%s", $1.code) ; }
             ;
 
 r_params:       IDENTIF                                             { sprintf (temp, "variable %s\n", $1.code) ;
                                                                       $$.code = gen_code (temp) ; }
-            |   IDENTIF r_params                                    { sprintf (temp, "variable %s\n%s", $1.code, $2.code) ;
+            |   IDENTIF                                             { insertSymbol(func_name, $1.code, params_index) ;
+                                                                      params_index++ ;
+                                                                      sprintf (temp, "variable %s\n", $1.code) ;
                                                                       $$.code = gen_code (temp) ; }
+                    r_params                                        { ; }
             ;
-
+*/
 codigo:         '(' r_codigo ')'                                    { sprintf (temp, "%s", $2.code) ;
                                                                       $$.code = gen_code (temp) ; }
             |   '(' r_codigo ')' codigo                             { sprintf (temp, "%s%s", $2.code, $4.code) ;
@@ -110,7 +149,7 @@ decl_var:       SETQ variable                                       { sprintf (t
 
 sentencia:      llamada                                             { sprintf (temp, "%s", $1.code) ;
                                                                       $$.code = gen_code (temp) ; }
-            |   SETF IDENTIF expresion                              { sprintf (temp, "%s dup %s !", $3.code, $2.code) ; 
+            |   SETF IDENTIF expresion                              { sprintf (temp, "%s %s !", $3.code, $2.code) ; 
                                                                       $$.code = gen_code (temp) ; }
             |   SETF '(' AREF IDENTIF expresion ')' expresion       { sprintf (temp, "%s %s %s cells + !", $7.code, $4.code, $5.code) ;
                                                                       $$.code = gen_code (temp) ; }
@@ -120,13 +159,21 @@ sentencia:      llamada                                             { sprintf (t
                                                                       $$.code = gen_code (temp) ; }
             |   PRINT expresion                                     { sprintf (temp, "%s .", $2.code) ; 
                                                                       $$.code = gen_code (temp) ; }
-            |   LOOP WHILE expresion DO codigo                      { sprintf (temp, "begin \n%s\nwhile \n%srepeat \ndrop", $3.code, $5.code) ;
+            |   LOOP WHILE expresion DO codigo                      { sprintf (temp, "begin \n%s\nwhile \n%srepeat", $3.code, $5.code) ;
                                                                       $$.code = gen_code (temp) ; }
-            |   IF expresion '(' PROGN codigo ')' resto_if          { sprintf (temp, "%s if\n%s %sthen \ndrop", $2.code, $5.code, $7.code) ; 
+            |   IF expresion '(' PROGN codigo ')' resto_if          { sprintf (temp, "%s if\n%s %sthen", $2.code, $5.code, $7.code) ; 
                                                                       $$.code = gen_code (temp) ; }
-            |   RETURN '-' FROM IDENTIF retorno                     { sprintf (temp, "%s", $5.code) ; 
+            |   RETURN '-' FROM IDENTIF retorno                     { if (params_index > 0) {
+                                                                            sprintf (temp, "drop\n%s", $5.code) ; 
+                                                                      } else {
+                                                                            sprintf (temp, "%s", $5.code) ; 
+                                                                      }
                                                                       $$.code = gen_code (temp) ; }
-            |   RETURN '-' FROM MAIN retorno                        { sprintf (temp, "%s", $5.code) ; 
+            |   RETURN '-' FROM MAIN retorno                        { if (params_index > 0) {
+                                                                            sprintf (temp, "drop\n%s", $5.code) ; 
+                                                                      } else {
+                                                                            sprintf (temp, "%s", $5.code) ; 
+                                                                      } 
                                                                       $$.code = gen_code (temp) ; }
             ;  
 
@@ -202,7 +249,11 @@ termino:        operando                            { $$ = $1 ; }
                                                       $$.code = gen_code (temp) ; }
             ;
 
-operando:       IDENTIF                 { sprintf (temp, "%s @", $1.code) ;
+operando:       IDENTIF                 { if (isParam($1.code)) {
+                                                sprintf (temp, "dup") ;
+                                          } else {
+                                                sprintf (temp, "%s @", $1.code) ;
+                                          }
                                           $$.code = gen_code (temp) ; }
             |   NUMBER                  { sprintf (temp, "%d", $1.value) ;
                                           $$.code = gen_code (temp) ; }
@@ -248,6 +299,28 @@ char *my_malloc (int nbytes)       // reserva n bytes de memoria dinamica
 
     return p ;
 }
+
+int isParam (char *var) 
+{
+    for (int i = 0; i < params_index; i++) {
+        if (strcmp(var, params[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}   
+
+
+/***************************************************************************/
+/*********************** Seccion de Tabla de Simbolos **********************/
+/***************************************************************************/
+
+/*void insertSymbol (char* func_name, char* simbolo, int index) {
+    params[index].func = func_name ;
+    params[index].param = simbolo ;
+    params[index].valor = 0 ;
+    //printf("index:%d\n", index);
+}*/
 
 
 /***************************************************************************/
