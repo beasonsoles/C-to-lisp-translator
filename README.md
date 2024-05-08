@@ -4,12 +4,16 @@
 
 *Para compilar el frontend:*
 **bison trad.y**
+
 **gcc trad.tab.c -o trad**
+
 *Para ejecutar los tests del frontend*
 **bash front_script_pruebas.sh**
 
 *Para compilar el backend:*
 **bison back.y**
+
 **gcc back.tab.c -o back**
+
 *Para ejecutar los tests del backend*
 **bash back_script_pruebas.sh**
