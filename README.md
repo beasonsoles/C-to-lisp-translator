@@ -9,7 +9,7 @@
 **gcc trad.tab.c -o trad**
 
 
-*Para ejecutar los tests del frontend*
+*Para ejecutar los tests del frontend:*
 
 **bash front_script_pruebas.sh**
 
@@ -20,6 +20,6 @@
 **gcc back.tab.c -o back**
 
 
-*Para ejecutar los tests del backend*
+*Para ejecutar los tests del backend:*
 
 **bash back_script_pruebas.sh**
