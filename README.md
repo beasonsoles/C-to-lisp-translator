@@ -1,4 +1,4 @@
-# C-to-lisp-translator
+# C-to-Lisp and Lisp-to-FORTH Translator
 - El archivo trad.y consiste en un compilador que traduce sentencias en C a Lisp (código intermedio)
 - El archivo back.y toma la salida traducida a Lisp y la traduce a Forth (código final)
 
