@@ -49,13 +49,11 @@ typedef struct s_attr {
 %token SETQ          // identifica la declaración de una variable
 %token SETF          // identifica la asignación de una variable
 %token VALUES        // identifica un conjunto de variables
-%token MAKE          // identifica la palabra 'make' en la creación de un vector
-%token ARRAY         // identifica la palabra 'array' en la creación de un vector
+%token MAKEARRAY     // identifica la creación de un vector
 %token AREF          // identifica el acceso a un vector
 %token IF            // identifica el if
 %token PROGN         // identifica las ramas del if 
-%token RETURN        // identifica el return
-%token FROM          // identifica el from
+%token RETURNFROM    // identifica el from
 
 
 %left OR                        // menor orden de precedencia
@@ -75,10 +73,10 @@ decl_def:       '(' r_decl_def ')'                                  { ; }
             |   '(' r_decl_def ')' decl_def                         { ; }
             ;
 
-r_decl_def:     SETQ variable                                       { printf ("%s\n", $2.code) ; }
-            |   DEFUN nombre_func '(' params ')' codigo             { printf (": %s\n%s ;\n", $2.code, $6.code) ;
+r_decl_def:     SETQ var_global                                     { printf ("%s\n", $2.code) ; }
+            |   DEFUN nombre_func '(' params ')' codigo             { printf (": %s %s\n%s ;\n", $2.code, $4.code, $6.code) ;
                                                                       for (int i = 0; i < params_index; i++) { params[i] = NULL; }
-                                                                      params_index = 0 ; }    
+                                                                      params_index = 0 ; }
             |   MAIN                                                { printf ("%s\n", $1.code) ; }
             ;
 
@@ -89,34 +87,28 @@ nombre_func:    IDENTIF                                             { strcpy (fu
                                                                       sprintf (temp, "%s", $1.code) ; 
                                                                       $$.code = gen_code (temp) ; }
 
-variable:       IDENTIF expresion                                   { sprintf (temp, "variable %s\n%s %s !", $1.code, $2.code, $1.code) ;
+var_global:     IDENTIF expresion                                   { sprintf (temp, "variable %s\n%s %s !", $1.code, $2.code, $1.code) ;
                                                                       $$.code = gen_code (temp) ; }
-            |   IDENTIF '(' MAKE '-' ARRAY NUMBER ')'               { sprintf (temp, "variable %s %d cells allot", $1.code, $6.value) ; 
+            |   IDENTIF '(' MAKEARRAY NUMBER ')'                    { sprintf (temp, "variable %s %d cells allot", $1.code, $4.value) ; 
                                                                       $$.code = gen_code (temp) ; }
             ; 
 
 params:         /* lambda */                                        { $$.code = gen_code ("") ; }
-            |   r_params                                            { printf ("%s", $1.code) ; }
-            ;
-
-r_params:       IDENTIF                                             { sprintf (temp, "variable %s\n", $1.code) ; // AÑADIR %s ! PERO DENTRO DE LA FUNCION
-                                                                      $$.code = gen_code (temp) ; }
-            |   IDENTIF r_params                                    { sprintf (temp, "variable %s\n%s", $1.code, $2.code) ;
+            |   r_params                                            { sprintf (temp, "\n%s", $1.code) ; 
                                                                       $$.code = gen_code (temp) ; }
             ;
 
-/*params:         /* lambda                                         { ; }
-            |   r_params                                            { ; }
-            ;
-
-r_params:       IDENTIF                                             { params[params_index] = $1.code ; 
+r_params:       IDENTIF                                             { printf ("variable %s_%s\n", func_name, $1.code) ;
+                                                                      sprintf (temp, "%s_%s !", func_name, $1.code);
+                                                                      $$.code = gen_code (temp) ; 
+                                                                      params[params_index] = $1.code ; 
                                                                       params_index++; }
-            |   IDENTIF                                             { params[params_index] = $1.code ; 
-                                                                      params_index++; 
-                                                                      $$.code = gen_code ("") ; }
-                    r_params                                        { ; }
+            |   IDENTIF r_params                                    { printf ("variable %s_%s\n", func_name, $1.code) ;
+                                                                      sprintf (temp, "%s \n%s_%s !", $2.code, func_name, $1.code);
+                                                                      $$.code = gen_code (temp) ; 
+                                                                      params[params_index] = $1.code ; 
+                                                                      params_index++; }
             ;
-*/
 
 codigo:         '(' r_codigo ')'                                    { sprintf (temp, "%s", $2.code) ;
                                                                       $$.code = gen_code (temp) ; }
@@ -124,21 +116,30 @@ codigo:         '(' r_codigo ')'                                    { sprintf (t
                                                                       $$.code = gen_code (temp) ; }
             ;
 
-r_codigo:       local_var                                           { printf ("%s\n", $1.code) ; 
-                                                                      $$.code = gen_code("") ; }
+r_codigo:       decl_local                                          { sprintf (temp, "%s\n", $1.code) ; 
+                                                                      $$.code = gen_code(temp) ; }
             |   sentencia                                           { sprintf (temp, "%s\n", $1.code) ;
                                                                       $$.code = gen_code (temp) ; }
             ;
 
-local_var:      SETQ variable                                       { sprintf (temp, "%s", $2.code) ;
+decl_local:     SETQ var_local                                      { sprintf (temp, "%s", $2.code) ;
                                                                       $$.code = gen_code (temp) ; }
-            |   SETQ variable local_var                             { sprintf (temp, "%s\n%s", $2.code, $3.code) ;
+            ;
+
+var_local:      IDENTIF expresion                                   { printf ("variable %s\n", $1.code) ;
+                                                                      sprintf (temp, "%s %s !", $2.code, $1.code) ;
                                                                       $$.code = gen_code (temp) ; }
+            |   IDENTIF '(' MAKEARRAY NUMBER ')'                    { printf ("variable %s %d cells allot\n", $1.code, $4.value) ; 
+                                                                      $$.code = gen_code ("") ; }
             ;
 
 sentencia:      llamada                                             { sprintf (temp, "%s", $1.code) ;
                                                                       $$.code = gen_code (temp) ; }
-            |   SETF IDENTIF expresion                              { sprintf (temp, "%s %s !", $3.code, $2.code) ; 
+            |   SETF IDENTIF expresion                              { if (isParam ($2.code)) {
+                                                                            sprintf (temp, "%s %s_%s !", $3.code, func_name, $2.code) ;
+                                                                      } else {
+                                                                            sprintf (temp, "%s %s !", $3.code, $2.code) ; 
+                                                                      }
                                                                       $$.code = gen_code (temp) ; }
             |   SETF '(' AREF IDENTIF expresion ')' expresion       { sprintf (temp, "%s %s %s cells + !", $7.code, $4.code, $5.code) ;
                                                                       $$.code = gen_code (temp) ; }
@@ -152,17 +153,9 @@ sentencia:      llamada                                             { sprintf (t
                                                                       $$.code = gen_code (temp) ; }
             |   IF expresion '(' PROGN codigo ')' resto_if          { sprintf (temp, "%s if\n%s %sthen", $2.code, $5.code, $7.code) ; 
                                                                       $$.code = gen_code (temp) ; }
-            |   RETURN '-' FROM IDENTIF expresion                   { if (params_index > 0) {
-                                                                            sprintf (temp, "drop\n%s exit", $5.code) ; 
-                                                                      } else {
-                                                                            sprintf (temp, "%s exit", $5.code) ; 
-                                                                      }
+            |   RETURNFROM IDENTIF expresion                        { sprintf (temp, "%s exit", $3.code) ; 
                                                                       $$.code = gen_code (temp) ; }
-            |   RETURN '-' FROM MAIN expresion                      { if (params_index > 0) {
-                                                                            sprintf (temp, "drop\n%s exit", $5.code) ; 
-                                                                      } else {
-                                                                            sprintf (temp, "%s exit", $5.code) ; 
-                                                                      } 
+            |   RETURNFROM MAIN expresion                           { sprintf (temp, "%s exit", $3.code) ; 
                                                                       $$.code = gen_code (temp) ; }
             ;  
 
@@ -234,12 +227,8 @@ termino:        operando                                            { $$ = $1 ; 
                                                                       $$.code = gen_code (temp) ; }
             ;
 
-operando:       IDENTIF                                             { if (isParam($1.code) == 1) {
-                                                                            if (params_index > 1) {
-                                                                                sprintf (temp, "over") ;
-                                                                            } else {
-                                                                                sprintf (temp, "dup") ;
-                                                                            }
+operando:       IDENTIF                                             { if (isParam ($1.code)) {
+                                                                            sprintf (temp, "%s_%s @", func_name, $1.code) ;
                                                                       } else {
                                                                             sprintf (temp, "%s @", $1.code) ;
                                                                       }
@@ -316,12 +305,8 @@ t_keyword keywords [] = { // define las palabras reservadas y los
     "do",          DO,
     "if",          IF,
     "progn",       PROGN,
-    //"return",      RETURN,
-    //"from",        FROM,
     "setq",        SETQ,
     "setf",        SETF,
-    //"make",        MAKE,
-    //"array",       ARRAY,
     "aref",        AREF,
     "prin1",       PRINT,
     "print",       PUTS,
@@ -442,7 +427,7 @@ int yylex ()
     if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
         i = 0 ;
         while (((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-            (c >= '0' && c <= '9') || c == '_' ) && i < 255) {
+            (c >= '0' && c <= '9') || c == '_' || c == '-') && i < 255) {
             temp_str [i++] = tolower (c) ;
             c = getchar () ;
         }
@@ -453,7 +438,13 @@ int yylex ()
         symbol = search_keyword (yylval.code) ;
         if (symbol == NULL) {    // no es palabra reservada -> identificador antes vrariabre
 //               printf ("\nDEV: IDENTIF %s\n", yylval.code) ;    // PARA DEPURAR
-            return (IDENTIF) ;
+            if (strcmp(yylval.code, "return-from") == 0) {
+                return (RETURNFROM) ;
+            } else if (strcmp(yylval.code, "make-array") == 0) {
+                return (MAKEARRAY) ;
+            } else {
+                return (IDENTIF) ;
+            }
         } else {
 //               printf ("\nDEV: OTRO %s\n", yylval.code) ;       // PARA DEPURAR
             return (symbol->token) ;
